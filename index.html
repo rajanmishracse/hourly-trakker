@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hourly Tracker</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --bg: #f3f5f2;
+      --card: #fff;
+      --ink: #1d2a24;
+      --mute: #6b7a72;
+      --line: #dde3de;
+      --done: #1f8a5b;
+      --miss: #c9473d;
+      --none: #e6eae7;
+      --acc: #1d2a24
+    }
+
+    @media (prefers-color-scheme:dark) {
+      :root {
+        --bg: #141a17;
+        --card: #1c2420;
+        --ink: #e8eee9;
+        --mute: #93a39a;
+        --line: #2c3732;
+        --done: #34b57c;
+        --miss: #e0685d;
+        --none: #2a3430;
+        --acc: #e8eee9
+      }
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.45 "Trebuchet MS", "Segoe UI", system-ui, sans-serif
+    }
+
+    .wrap {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 20px 14px 60px
+    }
+
+    h1 {
+      font-size: 22px;
+      margin: 0 0 14px;
+      letter-spacing: .2px
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 16px
+    }
+
+    .tabs button {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit
+    }
+
+    .tabs button.on {
+      background: var(--acc);
+      color: var(--bg);
+      border-color: var(--acc)
+    }
+
+    .bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap
+    }
+
+    .bar button,
+    .bar input,
+    .bar select {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      padding: 7px 11px;
+      border-radius: 8px;
+      font: inherit
+    }
+
+    .bar button {
+      cursor: pointer
+    }
+
+    .sum {
+      margin-left: auto;
+      color: var(--mute)
+    }
+
+    .prog {
+      height: 8px;
+      background: var(--none);
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 14px;
+      display: flex
+    }
+
+    .prog i {
+      display: block;
+      height: 100%
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin-bottom: 6px
+    }
+
+    .row.now {
+      outline: 2px solid var(--acc)
+    }
+
+    .hr {
+      width: 92px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600
+    }
+
+    .row input[type=text] {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      border-bottom: 1px dashed var(--line);
+      background: transparent;
+      color: var(--ink);
+      padding: 4px;
+      font: inherit
+    }
+
+    .btns {
+      display: flex;
+      gap: 6px
+    }
+
+    .btns button {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit
+    }
+
+    .btns button:focus-visible,
+    .tabs button:focus-visible {
+      outline: 2px solid var(--acc);
+      outline-offset: 2px
+    }
+
+    .btns .d.on {
+      background: var(--done);
+      border-color: var(--done);
+      color: #fff
+    }
+
+    .btns .n.on {
+      background: var(--miss);
+      border-color: var(--miss);
+      color: #fff
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+      margin-bottom: 14px
+    }
+
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px
+    }
+
+    .stat b {
+      display: block;
+      font-size: 22px
+    }
+
+    .stat span {
+      color: var(--mute);
+      font-size: 13px
+    }
+
+    .chart {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 14px;
+      overflow-x: auto
+    }
+
+    .bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 140px;
+      min-width: 100%
+    }
+
+    .col {
+      flex: 1;
+      min-width: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      height: 100%;
+      align-items: center
+    }
+
+    .col .st {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      height: calc(100% - 18px)
+    }
+
+    .col .st i {
+      display: block;
+      width: 100%
+    }
+
+    .col small {
+      font-size: 10px;
+      color: var(--mute);
+      height: 18px;
+      line-height: 18px
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      color: var(--mute);
+      font-size: 13px;
+      margin-top: 8px
+    }
+
+    .legend s {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 5px;
+      text-decoration: none
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden
+    }
+
+    th,
+    td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px
+    }
+
+    th {
+      color: var(--mute);
+      font-weight: 600
+    }
+
+    .syncbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+      color: var(--mute);
+      font-size: 13px
+    }
+
+    .syncbar button {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      padding: 7px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit
+    }
+
+    .tools {
+      margin-top: 22px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap
+    }
+
+    .tools button {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      padding: 7px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font: inherit
+    }
+
+    @media (max-width:520px) {
+      .hr {
+        width: 70px;
+        font-size: 13px
+      }
+
+      .btns button {
+        padding: 6px 9px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>Hourly Tracker</h1>
+    <div class="syncbar"><button id="gbtn">Sign in with Google to sync</button><button id="out"
+        style="display:none">Sign out</button><span id="sync">Not signed in - saved on this device only</span></div>
+    <div class="tabs" id="tabs">
+      <button data-v="day" class="on">Today</button>
+      <button data-v="week">Weekly report</button>
+      <button data-v="month">Monthly report</button>
+      <button data-v="year">Yearly report</button>
+    </div>
+    <div id="view"></div>
+    <div class="tools">
+      <button id="exp">Export backup</button>
+      <button id="imp">Import backup</button>
+      <input type="file" id="file" accept=".json" hidden>
+    </div>
+  </div>
+  <script>
+    const KEY = "hourlyTracker.v1";
+    let data = {}; try { data = JSON.parse(localStorage.getItem(KEY) || "{}") } catch (e) { data = {} }
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)) } catch (e) { } schedule() };
+    const pad = n => String(n).padStart(2, "0");
+    const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+    const parse = s => { const [a, b, c] = s.split("-").map(Number); return new Date(a, b - 1, c) };
+    const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x };
+    const hLabel = h => { const f = x => { const s = x % 12 === 0 ? 12 : x % 12; return s + (x < 12 ? " AM" : " PM") }; return f(h) + " - " + f((h + 1) % 24) };
+    let view = "day", cur = ymd(new Date()), ref = new Date(), year = new Date().getFullYear();
+    const $ = id => document.getElementById(id), V = $("view");
+
+    function dayStats(key) {
+      const d = data[key] || {}; let done = 0, miss = 0;
+      for (let h = 0; h < 24; h++) { const s = d[h] && d[h].s; if (s === 1) done++; else if (s === 2) miss++ }
+      return { done, miss, none: 24 - done - miss };
+    }
+    function agg(keys) {
+      let done = 0, miss = 0, none = 0, active = 0;
+      keys.forEach(k => { const s = dayStats(k); done += s.done; miss += s.miss; none += s.none; if (s.done + s.miss > 0) active++ });
+      const tracked = done + miss;
+      return { done, miss, none, active, days: keys.length, pct: tracked ? Math.round(done / tracked * 100) : 0 };
+    }
+    function statsHTML(a, label) {
+      return `<div class="stats">
+  <div class="stat"><b>${a.done}</b><span>Hours done</span></div>
+  <div class="stat"><b>${a.miss}</b><span>Hours not done</span></div>
+  <div class="stat"><b>${a.pct}%</b><span>Completion (of marked)</span></div>
+  <div class="stat"><b>${a.active}/${a.days}</b><span>${label}</span></div></div>`;
+    }
+    function chartHTML(items) {
+      const max = Math.max(1, ...items.map(i => i.max));
+      return `<div class="chart"><div class="bars">` + items.map(i => {
+        const hd = i.done / max * 100, hm = i.miss / max * 100;
+        return `<div class="col" title="${i.title}"><div class="st"><i style="height:${hm}%;background:var(--miss)"></i><i style="height:${hd}%;background:var(--done)"></i></div><small>${i.label}</small></div>`
+      }).join("") +
+        `</div><div class="legend"><span><s style="background:var(--done)"></s>Done</span><span><s style="background:var(--miss)"></s>Not done</span></div></div>`;
+    }
+    function tableHTML(rows, head) {
+      return `<table><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr>` + rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("") + `</table>`;
+    }
+    const MN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const DN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    function renderDay() {
+      const d = data[cur] || {}, s = dayStats(cur), isToday = cur === ymd(new Date()), nowH = new Date().getHours();
+      let h = `<div class="bar"><button id="pv">&larr;</button><input type="date" id="dt" value="${cur}"><button id="nx">&rarr;</button><button id="td">Today</button>
+  <span class="sum">${s.done} done &middot; ${s.miss} not done &middot; ${s.none} pending</span></div>
+  <div class="prog"><i style="width:${s.done / 24 * 100}%;background:var(--done)"></i><i style="width:${s.miss / 24 * 100}%;background:var(--miss)"></i></div>`;
+      for (let i = 0; i < 24; i++) {
+        const e = d[i] || {}, st = e.s || 0;
+        h += `<div class="row${isToday && i === nowH ? " now" : ""}"><span class="hr">${hLabel(i)}</span>
+    <input type="text" data-h="${i}" placeholder="Note (optional)" value="${(e.n || "").replace(/"/g, "&quot;")}">
+    <span class="btns"><button class="d${st === 1 ? " on" : ""}" data-h="${i}" data-s="1">&#10003; Done</button><button class="n${st === 2 ? " on" : ""}" data-h="${i}" data-s="2">&#10007; Not done</button></span></div>`;
+      }
+      V.innerHTML = h;
+      const go = k => { cur = k; renderDay() };
+      $("pv").onclick = () => go(ymd(addDays(parse(cur), -1)));
+      $("nx").onclick = () => go(ymd(addDays(parse(cur), 1)));
+      $("td").onclick = () => go(ymd(new Date()));
+      $("dt").onchange = e => { if (e.target.value) go(e.target.value) };
+      V.querySelectorAll(".btns button").forEach(b => b.onclick = () => {
+        const hr = b.dataset.h, sv = +b.dataset.s;
+        data[cur] = data[cur] || {}; data[cur][hr] = data[cur][hr] || {};
+        data[cur][hr].s = data[cur][hr].s === sv ? 0 : sv; data[cur][hr].t = Date.now();
+        save(); renderDay();
+      });
+      V.querySelectorAll("input[type=text]").forEach(inp => inp.onchange = () => {
+        const hr = inp.dataset.h; data[cur] = data[cur] || {}; data[cur][hr] = data[cur][hr] || {};
+        data[cur][hr].n = inp.value; data[cur][hr].t = Date.now(); save();
+      });
+    }
+
+    function renderWeek() {
+      const r = new Date(ref), dow = (r.getDay() + 6) % 7, start = addDays(r, -dow);
+      const keys = [...Array(7)].map((_, i) => ymd(addDays(start, i)));
+      const a = agg(keys);
+      const items = keys.map(k => { const s = dayStats(k); return { done: s.done, miss: s.miss, max: 24, label: DN[parse(k).getDay()], title: k + ": " + s.done + " done, " + s.miss + " not done" } });
+      const rows = keys.map(k => { const s = dayStats(k), t = s.done + s.miss; return [DN[parse(k).getDay()] + " " + k.slice(5), s.done, s.miss, s.none, t ? Math.round(s.done / t * 100) + "%" : "-"] });
+      V.innerHTML = `<div class="bar"><button id="pv">&larr;</button><b>${keys[0]} to ${keys[6]}</b><button id="nx">&rarr;</button><button id="td">This week</button></div>` +
+        statsHTML(a, "Days tracked") + chartHTML(items) + tableHTML(rows, ["Day", "Done", "Not done", "Pending", "Rate"]);
+      $("pv").onclick = () => { ref = addDays(ref, -7); renderWeek() };
+      $("nx").onclick = () => { ref = addDays(ref, 7); renderWeek() };
+      $("td").onclick = () => { ref = new Date(); renderWeek() };
+    }
+
+    function renderMonth() {
+      const y = ref.getFullYear(), m = ref.getMonth(), n = new Date(y, m + 1, 0).getDate();
+      const keys = [...Array(n)].map((_, i) => ymd(new Date(y, m, i + 1)));
+      const a = agg(keys);
+      const items = keys.map((k, i) => { const s = dayStats(k); return { done: s.done, miss: s.miss, max: 24, label: i + 1, title: k + ": " + s.done + " done, " + s.miss + " not done" } });
+      const weeks = {};
+      keys.forEach(k => { const d = parse(k), w = Math.ceil(d.getDate() / 7); (weeks[w] = weeks[w] || []).push(k) });
+      const rows = Object.keys(weeks).map(w => { const x = agg(weeks[w]); return ["Days " + (+weeks[w][0].slice(8)) + "-" + (+weeks[w].slice(-1)[0].slice(8)), x.done, x.miss, x.pct + "%"] });
+      V.innerHTML = `<div class="bar"><button id="pv">&larr;</button><b>${MN[m]} ${y}</b><button id="nx">&rarr;</button><button id="td">This month</button></div>` +
+        statsHTML(a, "Days tracked") + chartHTML(items) + tableHTML(rows, ["Period", "Done", "Not done", "Rate"]);
+      $("pv").onclick = () => { ref = new Date(y, m - 1, 1); renderMonth() };
+      $("nx").onclick = () => { ref = new Date(y, m + 1, 1); renderMonth() };
+      $("td").onclick = () => { ref = new Date(); renderMonth() };
+    }
+
+    function renderYear() {
+      const months = [...Array(12)].map((_, m) => { const n = new Date(year, m + 1, 0).getDate(); return [...Array(n)].map((_, i) => ymd(new Date(year, m, i + 1))) });
+      const all = months.flat(), a = agg(all);
+      const ms = months.map(k => agg(k));
+      const items = ms.map((x, i) => ({ done: x.done, miss: x.miss, max: months[i].length * 24, label: MN[i], title: MN[i] + ": " + x.done + " done, " + x.miss + " not done" }));
+      const rows = ms.map((x, i) => [MN[i], x.done, x.miss, x.active + "/" + x.days, x.pct + "%"]);
+      V.innerHTML = `<div class="bar"><button id="pv">&larr;</button><b>${year}</b><button id="nx">&rarr;</button><button id="td">This year</button></div>` +
+        statsHTML(a, "Days tracked") + chartHTML(items) + tableHTML(rows, ["Month", "Done", "Not done", "Days tracked", "Rate"]);
+      $("pv").onclick = () => { year--; renderYear() };
+      $("nx").onclick = () => { year++; renderYear() };
+      $("td").onclick = () => { year = new Date().getFullYear(); renderYear() };
+    }
+
+    function render() { ({ day: renderDay, week: renderWeek, month: renderMonth, year: renderYear })[view]() }
+    $("tabs").querySelectorAll("button").forEach(b => b.onclick = () => {
+      view = b.dataset.v; $("tabs").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      ref = new Date(); year = new Date().getFullYear(); render();
+    });
+    $("exp").onclick = () => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }));
+      a.download = "hourly-tracker-backup.json"; a.click();
+    };
+    $("imp").onclick = () => $("file").click();
+    $("file").onchange = e => {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = () => { try { data = JSON.parse(r.result); save(); render() } catch (x) { alert("Invalid backup file") } };
+      r.readAsText(f);
+    };
+
+    /* ---- Google sign-in + Drive sync (hidden app-data folder) ---- */
+    const CLIENT_ID = "311712624185-2k19iivvaigtpmns3v6i2j9a1uph6nom.apps.googleusercontent.com";
+    const SCOPE = "https://www.googleapis.com/auth/drive.appdata";
+    const FNAME = "hourly-tracker-data.json", FLAG = "hourlyTracker.signed";
+    let tok = null, tokExp = 0, fileId = null, client = null, pushT = null, busy = false;
+    const setStatus = t => { $("sync").textContent = t };
+    const showBtn = on => { $("gbtn").style.display = on ? "" : "none"; $("out").style.display = on ? "none" : "" };
+    function merge(a, b) { const o = JSON.parse(JSON.stringify(a)); for (const d in b) { o[d] = o[d] || {}; for (const h in b[d]) { const x = o[d][h], y = b[d][h]; if (!x || (y.t || 0) > (x.t || 0)) o[d][h] = y } } return o }
+    async function api(url, opt = {}) {
+      const r = await fetch(url, { ...opt, headers: { ...(opt.headers || {}), Authorization: "Bearer " + tok } });
+      if (r.status === 401) { tok = null; showBtn(true); throw new Error("auth") }
+      if (!r.ok) throw new Error(r.status); return r;
+    }
+    async function findFile() {
+      if (fileId) return fileId;
+      const r = await api("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id)&q=" + encodeURIComponent("name='" + FNAME + "'"));
+      const j = await r.json(); fileId = j.files[0] ? j.files[0].id : null; return fileId;
+    }
+    async function sync() {
+      if (!tok || busy) return; busy = true; setStatus("Syncing...");
+      try {
+        const id = await findFile(), before = JSON.stringify(data);
+        if (id) { const r = await api("https://www.googleapis.com/drive/v3/files/" + id + "?alt=media"); let remote = {}; try { remote = await r.json() } catch (e) { } data = merge(data, remote) }
+        const body = JSON.stringify(data);
+        try { localStorage.setItem(KEY, body) } catch (e) { }
+        const bd = "hbound", meta = id ? {} : { name: FNAME, parents: ["appDataFolder"] };
+        const mp = "--" + bd + "\r\nContent-Type: application/json\r\n\r\n" + JSON.stringify(meta) + "\r\n--" + bd + "\r\nContent-Type: application/json\r\n\r\n" + body + "\r\n--" + bd + "--";
+        const url = id ? "https://www.googleapis.com/upload/drive/v3/files/" + id + "?uploadType=multipart" : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id";
+        const r2 = await api(url, { method: id ? "PATCH" : "POST", headers: { "Content-Type": "multipart/related; boundary=" + bd }, body: mp });
+        const j2 = await r2.json(); if (!id) fileId = j2.id;
+        setStatus("Synced to Google Drive at " + new Date().toLocaleTimeString());
+        if (body !== before) render();
+      } catch (e) { setStatus("Sync failed - will retry on next change") }
+      busy = false;
+    }
+    function ensure() {
+      if (!client) return;
+      if (tok && Date.now() < tokExp) sync(); else client.requestAccessToken({ prompt: "" });
+    }
+    function schedule() { if (localStorage.getItem(FLAG)) { clearTimeout(pushT); pushT = setTimeout(ensure, 1500) } }
+    function initAuth() {
+      if (!(window.google && google.accounts)) { setTimeout(initAuth, 300); return }
+      client = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID, scope: SCOPE,
+        callback: r => { if (r.access_token) { tok = r.access_token; tokExp = Date.now() + (r.expires_in - 60) * 1000; localStorage.setItem(FLAG, "1"); showBtn(false); sync() } },
+        error_callback: () => { showBtn(true); setStatus("Click Sign in to sync") }
+      });
+      if (localStorage.getItem(FLAG)) ensure();
+    }
+    $("gbtn").onclick = () => {
+      if (CLIENT_ID.startsWith("PASTE")) { alert("Set your Google CLIENT_ID in the file first (see setup steps)."); return }
+      if (!client) { alert("Google script not loaded. Check internet and open via https:// URL."); return }
+      client.requestAccessToken({ prompt: "consent" });
+    };
+    $("out").onclick = () => {
+      if (tok && window.google) google.accounts.oauth2.revoke(tok);
+      tok = null; fileId = null; localStorage.removeItem(FLAG); showBtn(true); setStatus("Signed out - saved on this device only");
+    };
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && localStorage.getItem(FLAG)) ensure() });
+    if (!CLIENT_ID.startsWith("PASTE")) initAuth();
+    render();
+  </script>
+</body>
+
+</html>
